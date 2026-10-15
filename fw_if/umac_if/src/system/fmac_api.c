@@ -23,6 +23,8 @@
 #include "system/fmac_event.h"
 #include "system/fmac_bb.h"
 #include "util.h"
+#include "fw/lmac_if_common.h"
+#include "common/hal_mem.h"
 
 
 static unsigned char nrf_wifi_fmac_vif_idx_get(struct nrf_wifi_fmac_dev_ctx *fmac_dev_ctx)
@@ -4007,6 +4009,22 @@ enum nrf_wifi_status nrf_wifi_fmac_req_extended_sleep(void *dev_ctx,
 		nrf_wifi_osal_log_err("%s: Invalid op mode",
 				      __func__);
 		goto out;
+	}
+
+	if (fmac_dev_ctx->hal_dev_ctx) {
+		enum nrf_wifi_status wr_status;
+		struct nrf_wifi_hal_dev_ctx *hal_dev_ctx = fmac_dev_ctx->hal_dev_ctx;
+
+		hal_dev_ctx->curr_proc = RPU_PROC_TYPE_MCU_LMAC;
+		wr_status = hal_rpu_mem_write(hal_dev_ctx,
+					      RPU_MEM_QUITE_PERIOD,
+					      &duration_sec,
+					      sizeof(duration_sec));
+		if (wr_status != NRF_WIFI_STATUS_SUCCESS) {
+			nrf_wifi_osal_log_err("%s: quiet period GRAM write failed",
+					      __func__);
+			goto out;
+		}
 	}
 
 	set_quiet_period_cmd = nrf_wifi_osal_mem_zalloc(sizeof(*set_quiet_period_cmd));
